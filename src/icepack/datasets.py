@@ -110,7 +110,7 @@ nsidc_data = pooch.create(
 
 def fetch_measures_antarctica():
     r"""Fetch the MEaSUREs Antarctic velocity map"""
-    return "../data/moa750_2014_hp1_v01.tif"
+    return "../data/antarctica_ice_velocity_450m_v2.nc"
     #return nsidc_data.fetch(
     #    "antarctic_ice_vel_phase_map_v01.nc", downloader=_earthdata_downloader
     #)
@@ -196,8 +196,9 @@ def fetch_randolph_glacier_inventory(region):
 
 def fetch_mosaic_of_antarctica():
     r"""Fetch the MODIS optical image mosaic of Antarctica"""
-    return nsidc_data.fetch(
-        "moa750_2009_hp1_v02.0.tif.gz",
-        downloader=_earthdata_downloader,
-        processor=pooch.Decompress(),
-    )
+    return "../data/moa750_2014_hp1_v01.tif"
+    #return nsidc_data.fetch(
+    #    "moa750_2009_hp1_v02.0.tif.gz",
+    #    downloader=_earthdata_downloader,
+    #    processor=pooch.Decompress(),
+    #)
