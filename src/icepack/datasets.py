@@ -110,9 +110,10 @@ nsidc_data = pooch.create(
 
 def fetch_measures_antarctica():
     r"""Fetch the MEaSUREs Antarctic velocity map"""
-    return nsidc_data.fetch(
-        "antarctic_ice_vel_phase_map_v01.nc", downloader=_earthdata_downloader
-    )
+    return "../data/moa750_2014_hp1_v01.tif"
+    #return nsidc_data.fetch(
+    #    "antarctic_ice_vel_phase_map_v01.nc", downloader=_earthdata_downloader
+    #)
 
 
 def fetch_measures_greenland():
@@ -129,9 +130,10 @@ def fetch_measures_greenland():
 def fetch_bedmachine_antarctica():
     r"""Fetch the BedMachine map of Antarctic ice thickness, surface elevation,
     and bed elevation"""
-    return nsidc_data.fetch(
-        "BedMachineAntarctica_2020-07-15_v02.nc", downloader=_earthdata_downloader
-    )
+    return '../data/BedMachineAntarctica-v3.nc'
+    # return nsidc_data.fetch(
+        # "BedMachineAntarctica_2020-07-15_v02.nc", downloader=_earthdata_downloader
+    # )
 
 
 def fetch_bedmachine_greenland():
