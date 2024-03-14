@@ -14,6 +14,15 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   *args - non-keyworded arguments (Requires correct order of arguments passed to a function)\
   **kwargs - Keyword arguments (Arguments can be passed in any order, in the style of kwarg=argument)
 
+  - (C) Friction
+    - (Cs) Side Friction
+  - (u) Velocity
+  - (h) Thickness
+  - (τ(u,C)) Basal Shear Stress
+  - (E) Energy Density
+  - (D) Damage
+  - (M) Membrane Stress
+
   ## Constants
   - year = 365.25 * 24 * 60 * 60
   - (g) gravity = 9.81 * year**2
@@ -22,7 +31,7 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   - (R) ideal_gas = 8.3144621e-3
   - (n) glen_flow_law = 3.0
   - strain_rate_min = 1e-5
-  - weertman_sliding_law = 3.0
+  - (m) weertman_sliding_law = 3.0
   - (c) heat_capacity = 2.0e3 * year**2
   - (α) thermal_diffusivity = 2.3e-3 / (917 * 2.0) * year
   - (Tm) melting_temperature = 273.15
@@ -50,10 +59,21 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
 
   ### Friction
   Functions included:
-  - bed_friction
-  - side_friction
-  - side_friction_xz
-  - normal_flow_penalty
+  - friction_stress(u, C):
+    - Compute the shear stress for a given sliding velocity
+  - bed_friction(**kwargs): 
+    - Return the bed friction part of the ice stream action functional
+    - velocity, friction
+  - side_friction(**kwargs):
+    - Return the side wall friction part of the action functional
+    - velocity, thickness, side_friction
+  - side_friction_xz(**kwargs): 
+    - Return the side wall friction part of the action functional
+    - velocity, thickness, side_friction
+  - normal_flow_penalty(**kwargs):
+    - Return the penalty for flow normal to the domain boundary
+      - For problems where a glacier flows along some boundary, e.g. a fjord wall, the velocity has to be parallel to this boundary. Rather than enforce this boundary condition directly, we add a penalty for normal flow to the action functional.
+    - velocity, scale
   
   ### Heat Transport
   Class for modeling 3D heat transport
@@ -68,16 +88,19 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
             Penalty parameter for deviation of the surface energy from the
             atmospheric value; this is very poorly constrained
 
-    Functions included:
-    - advective_flux
-      - energy, velocity, vertical_velocity, thickness, energy_inflow, energy_surface
-    - diffusive_flux
-      - energy, thickness, energy_surface
-    - sources
-      - energy, thickness, heat, heat_bed
-    - temperature(self,E): Return the temperature of ice at the given energy density
-    - meltwater_fraction(self,E): Return the melt f4raction of ice at the given energy density
-    - energy_density(self,T,f): Return the energy density for ice at the given temperature and melt fraction
+Functions included:
+- advective_flux(self, **kwargs):
+  - energy, velocity, vertical_velocity, thickness, energy_inflow, energy_surface
+- diffusive_flux(self, **kwargs):
+  - energy, thickness, energy_surface
+- sources(self, **kwargs):
+  - energy, thickness, heat, heat_bed
+- temperature(self, E):
+  - Return the temperature of ice at the given energy density
+- meltwater_fraction(self, E):
+  - Return the melt fraction of ice at the given energy density
+- energy_density(self, T, f):
+  - Return the energy density for ice at the given temperature and melt fraction
 
   ### Hybrid
   Can resolve both plug and shear flow
@@ -111,6 +134,10 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   Assumes shear flow, e.g. the speed at the ice base is much smaller than at the ice surface
 
   ### Transport
+  Transport Equation:\
+  - field_name, source_name, conservative
+  Continuity: Describes the form of the mass continuity equation\
+  - thickness, accumulation
 
   ### Viscosity
   Functions included: 
