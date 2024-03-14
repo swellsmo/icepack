@@ -14,8 +14,23 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   *args - non-keyworded arguments (Requires correct order of arguments passed to a function)\
   **kwargs - Keyword arguments (Arguments can be passed in any order, in the style of kwarg=argument)
 
+  ## Constants
+  - year = 365.25 * 24 * 60 * 60
+  - (g) gravity = 9.81 * year**2
+  - (ρ_I) ice_density = 917 / year**2 * 1.0e-6
+  - (ρ_W) water_density = 1024 / year**2 * 1.0e-6
+  - (R) ideal_gas = 8.3144621e-3
+  - (n) glen_flow_law = 3.0
+  - strain_rate_min = 1e-5
+  - weertman_sliding_law = 3.0
+  - (c) heat_capacity = 2.0e3 * year**2
+  - (α) thermal_diffusivity = 2.3e-3 / (917 * 2.0) * year
+  - (Tm) melting_temperature = 273.15
+  - (L) latent_heat = 334e3 * year**2
+  
+
   ## Models
-  `model = icepack.models.IceShelf()`
+  `model = icepack.models.IceShelf()`\
   All models need velocity, thickness
   
   ### Damage Transport
@@ -41,6 +56,28 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   - normal_flow_penalty
   
   ### Heat Transport
+  Class for modeling 3D heat transport
+
+  This class solves the 3D advection-diffusion equation for the energy
+    density. The energy density factors in both the temperature and the latent
+    heat included in meltwater. We use the energy density rather than the
+    enthalpy because it comes out to a nice round number (about 500 MPa/m^3)
+    in the unit system we use.
+
+    surface_exchange_coefficient : float, optional
+            Penalty parameter for deviation of the surface energy from the
+            atmospheric value; this is very poorly constrained
+
+    Functions included:
+    - advective_flux
+      - energy, velocity, vertical_velocity, thickness, energy_inflow, energy_surface
+    - diffusive_flux
+      - energy, thickness, energy_surface
+    - sources
+      - energy, thickness, heat, heat_bed
+    - temperature(self,E): Return the temperature of ice at the given energy density
+    - meltwater_fraction(self,E): Return the melt f4raction of ice at the given energy density
+    - energy_density(self,T,f): Return the energy density for ice at the given temperature and melt fraction
 
   ### Hybrid
   Can resolve both plug and shear flow
@@ -133,22 +170,35 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
 ## Graph Types
 
 ### triplot
-Plot a mesh with a different color for each boundary segment
+Plot a mesh with a different color for each boundary segment\
+![A triplot of a sample glacier mesh, with the boundary segments labeled](https://github.com/swellsmo/icepack/assets/116534525/aa8fc611-2dd0-44ac-9847-2eafebdbf2d0)
+
 
 ### tricontourf
-Create a filled contour plot of a finite element field
+Create a filled contour plot of a finite element field\
+![A filled contour plot of ice velocity using the magma colormap](https://github.com/swellsmo/icepack/assets/116534525/0ed29a91-b6a7-4b96-bf97-9a75692bb533)
+
 
 ### tricontour
-Create a contour plot of a finite element field
+Create a contour plot of a finite element field\
+![A contour plot of the ice velocity field using the magma colormap](https://github.com/swellsmo/icepack/assets/116534525/7c0ee09e-3fc1-486b-aa47-d2634951ee41)
+
 
 ### tripcolor
-Create a pseudo-color plot of a finite element field
+Create a pseudo-color plot of a finite element field\
+![a tripcolor plot of ice velocity](https://github.com/swellsmo/icepack/assets/116534525/08309ce2-9c8a-4920-9f79-9c234d411e59)
+
+
 
 ### quiver
-Make a quiver plot of a vector field
+Make a quiver plot of a vector field\
+![A quiver plot of the model glacier's velocity using an inverted magma colormap](https://github.com/swellsmo/icepack/assets/116534525/d537ab74-db74-40b1-b314-c1bbfb6d65e9)
+
 
 ### streamplot
-Draw streamlines of a vector field
+Draw streamlines of a vector field\
+![A streamplot of the model glacier's velocity field in the magma colorbar](https://github.com/swellsmo/icepack/assets/116534525/fa9ef96b-1c0b-4d23-9c5b-f58946fc8d5f)
+
 
 
 ## Creating a Mesh
