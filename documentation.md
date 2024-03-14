@@ -18,7 +18,7 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
     - (Cs) Side Friction
   - (u) Velocity
   - (h) Thickness
-  - (τ(u,C)) Basal Shear Stress
+  - (τ(u, C)) Basal Shear Stress
   - (E) Energy Density
   - (D) Damage
   - (M) Membrane Stress
@@ -60,7 +60,7 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   ### Friction
   Functions included:
   - friction_stress(u, C):
-    - Compute the shear stress for a given sliding velocity
+    - Compute the shear stress for a given sliding velocity and friction
   - bed_friction(**kwargs): 
     - Return the bed friction part of the ice stream action functional
     - velocity, friction
