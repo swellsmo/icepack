@@ -39,43 +39,44 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
   
 
 ## Models
-  `model = icepack.models.IceShelf()`\
-  Pass **kwargs into the solver for each model, not the model itself
+  The model tells the solvers what physics problem we want to solve. The solvers then input the relevant arguments into the model and tell us the solution for the physics problem given the paramters specified. 
+  
+  Pass $\textsf{\color{#3F00FF}**kwargs}$ into the solver for each model, not the model itself. All of the $\textsf{\color{#3F00FF}**kwargs}$ presented in this section are the $\textsf{\color{#3F00FF}**kwargs}$ that can be input to the solvers of each model
+
+  The full list of models is:
+  ```DamageTransport
+  HeatTransport3D
+  HybridModel
+  IceShelf
+  IceStream
+  ShallowIce
+  ```
   
 ### Damage Transport
+```
+damage_model = icepack.models.DamageTransport()
+damage_solver = icepack.solvers.DamageSolver(damage_model)
+```
   Description of the continuum damage mechanics model
   
   This module contains a solver for the conservative advection equation that describes the evolution of ice damage (Albrecht and Levermann 2014).
   
-  Pass arguments into the damage solver
 
-  This code contains the following predefined values:
+  This model contains the following predefined values (that can be changed with $\textsf{\color{#3F00FF}**kwargs}$):
   - damage_stress [0.07]
   - damage_rate [0.3]
   - healing_strain_rate [2e-10 * year]
   - healing_rate [0.1]
+
+
+  Additional $\textsf{\color{#3F00FF}**kwargs}$: damage, strain_rate, membrane_stress, damage_inflow, flux,
   
-
-
-### Friction
-  Functions included:
-  - friction_stress(u, C):
-    - Compute the shear stress for a given sliding velocity and friction
-  - bed_friction($\textsf{\color{#3F00FF}**kwargs}$): 
-    - Return the bed friction part of the ice stream action functional
-    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, friction
-  - side_friction($\textsf{\color{#3F00FF}**kwargs}$):
-    - Return the side wall friction part of the action functional
-    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, side_friction
-  - side_friction_xz($\textsf{\color{#3F00FF}**kwargs}$): 
-    - Return the side wall friction part of the action functional
-    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, side_friction
-  - normal_flow_penalty($\textsf{\color{#3F00FF}**kwargs}$):
-    - Return the penalty for flow normal to the domain boundary
-      - For problems where a glacier flows along some boundary, e.g. a fjord wall, the velocity has to be parallel to this boundary. Rather than enforce this boundary condition directly, we add a penalty for normal flow to the action functional.
-    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, scale
   
 ### Heat Transport
+```
+heat_model = icepack.models.HeatTransport3D()
+heat_solver = HeatTransportSolver(heat_model)
+```
 Class for modeling 3D heat transport
 
 This class solves the 3D advection-diffusion equation for the energy density. The energy density factors in both the temperature and the latent heat included in meltwater. We use the energy density rather than the enthalpy because it comes out to a nice round number (about 500 MPa/m^3) in the unit system we use.
@@ -84,12 +85,14 @@ This class solves the 3D advection-diffusion equation for the energy density. Th
             Penalty parameter for deviation of the surface energy from the
             atmospheric value; this is very poorly constrained
 
-Functions included:
-- advective_flux(self, $\textsf{\color{#3F00FF}**kwargs}$):
+The functions defined in this model are used by the Heat Transport Solver. All the $\textsf{\color{#3F00FF}**kwargs}$ listed here can be changed within the solver.
+
+Functions defined in model:
+- advective_flux(self, **kwargs):
   - $\textsf{\color{#3F00FF}**kwargs}$: energy, velocity, vertical_velocity, thickness, energy_inflow, energy_surface
-- diffusive_flux(self, $\textsf{\color{#3F00FF}**kwargs}$):
+- diffusive_flux(self, **kwargs):
   - $\textsf{\color{#3F00FF}**kwargs}$: energy, thickness, energy_surface
-- sources(self, $\textsf{\color{#3F00FF}**kwargs}$):
+- sources(self, **kwargs):
   - $\textsf{\color{#3F00FF}**kwargs}$: energy, thickness, heat, heat_bed
 - temperature(self, E):
   - Return the temperature of ice at the given energy density
@@ -101,13 +104,53 @@ Functions included:
 ### Hybrid
 Can resolve both plug and shear flow
 
-surface
+Functions included outside of model:
+- gravity(**kwargs)
+  -  velocity, thickness, surface
+- terminus(**kwargs)
+  - Return the terminal stress part of the hybrid model action functional
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, surface
+  - **opts: ice_front_ids
+-  _effective_strain_rate(ε_x, ε_z, ε_min)
+- stresses(**kwargs)
+  - Calculate the membrane and vertical shear stresses for the given horizontal and shear strain rates and fluidity
+  - $\textsf{\color{#3F00FF}**kwargs}$: strain_rate_x, strain_rate_z, fluidity, strain_rate_min
+- horizontal_strain_rate(**kwargs)
+  - Calculate the horizontal strain rate with corrections for terrain-following coordinates
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, surface, thickness
+- vertical_strain_rate(**kwargs)
+  - Calculate the vertical strain rate with corrections for terrain-following coordinates
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+- viscosity(**kwargs)
+  - Return the viscous part of the hybrid model action functional
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, surface, thickness, fluidity, strain_rate_min
 
-Functions Included:
-- _effective_strain_rate(ε_x, ε_z, ε_min)
-- stresses($\textsf{\color{#3F00FF}**kwargs}$)
-- horizontal_strain_rate($\textsf{\color{#3F00FF}**kwargs}$)
-- vertical_strain_rate($\textsf{\color{#3F00FF}**kwargs}$)
+$\textsf{\color{#3F00FF}**kwargs}$ taken by model:
+- viscosity
+- friction
+- side_friction
+- side_friction_xz
+- gravity
+- terminus
+- normal_flow_pentaly
+- continuity
+
+**opts taken by model: 
+- ice_front_ids
+- side_wall_ids
+
+Functions included inside model:
+- action(self, **kwargs)
+ - Return the action functional that gives the hybrid model as its Euler-Lagrange equations
+ - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+ - **opts: ice_front_ids, side_wall_ids
+- scale(self,**kwargs)
+  - Return the positive, convex part of the action functional. The positive part of the action functional is used as a dimensional scale to determine when to terminate an optimization algorithm.
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity
+- quadrature_degree(self,**kwargs)
+  - Return the quadrature degree necessary to integrate the action functional accurately
+    - Firedrake uses a very conservative algorithm for estimating the number of quadrature points necessary to integrate a given expression. By exploiting known structure of the problem, we can reduce the number of quadrature points while preserving accuracy.
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
 
 ### Ice Shelf
 Class for modelling the flow of floating ice shelves
@@ -127,10 +170,33 @@ Assumes plug flow, e.g. the velocity is roughtly constant with depth
 ### Shallow Ice
 Assumes shear flow, e.g. the speed at the ice base is much smaller than at the ice surface
 
+## Other items in the "Models" folder:
+These documents are in the models folder of icepack, but do not contain any models to solve. Instead, they contain functions that other models call. Here is a list of defined functions in each document, as well as the $\textsf{\color{#3F00FF}**kwargs}$ they can take, which can be input into the Solver
+
+### Friction
+
+  Functions included:
+  - friction_stress(u, C):
+    - Compute the shear stress for a given sliding velocity and friction
+  - bed_friction(**kwargs): 
+    - Return the bed friction part of the ice stream action functional
+    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, friction
+  - side_friction(**kwargs):
+    - Return the side wall friction part of the action functional
+    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, side_friction
+  - side_friction_xz(**kwargs): 
+    - Return the side wall friction part of the action functional
+    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, side_friction
+  - normal_flow_penalty(**kwargs):
+    - Return the penalty for flow normal to the domain boundary
+      - For problems where a glacier flows along some boundary, e.g. a fjord wall, the velocity has to be parallel to this boundary. Rather than enforce this boundary condition directly, we add a penalty for normal flow to the action functional.
+    - $\textsf{\color{#3F00FF}**kwargs}$: velocity, scale
+
 ### Transport
-Transport Equation:\
+Transport Equation:
 - field_name, source_name, conservative
-Continuity: Describes the form of the mass continuity equation\
+  
+Continuity: Describes the form of the mass continuity equation
 - thickness, accumulation
 
 ### Viscosity
@@ -145,18 +211,38 @@ Functions included:
 - rate_factor(T)
   - Compute the rate factor in Glen's flow law for a given temperature
 - _effective_strain_rate(ε, ε_min)
-- membrane_stress($\textsf{\color{#3F00FF}**kwargs}$)
+- membrane_stress(**kwargs)
   - Calculate the membrane stress for a given strain rate and fluidity
   - $\textsf{\color{#3F00FF}**kwargs}$: strain_rate, fluidity, strain_rate_min
-- viscosity_depth_averaged($\textsf{\color{#3F00FF}**kwargs}$)
+- viscosity_depth_averaged(**kwargs)
   - Return the viscous part of the action for depth-averaged models
   - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, fluidity, strain_rate_min
 
 ## Solvers
+
+
+IcePack contains 5 solvers
+
+```
+FlowSolver
+ImplicitEuler
+LaxWendroff
+HeatTransportSolver
+DamageSolver
+```
+
+The main solvers I use are FlowSolver, HeatTransportSolver, and DamageSolver
+
+
+
+### Damage Solver
+Solver for the continuum damage mechanics model, damage_transport()
+  
+### Flow Solver
 When initiating a solver, pass it any arguments that never change throughout a simulation.\
 `solver = icepack.solvers.FlowSolver(model, **opts)`
 
-There are three main solvers: damage, flow, and heat transport. 
+Includes ImplicitEuler and LaxWendroff solvers
 
 ##### **opts can include:
       model: 
@@ -180,27 +266,6 @@ There are three main solvers: damage, flow, and heat transport.
       prognostic_solver_parameters : dict, optional
           Options for prognostic solve routine; defaults to direct
           factorization of the flux matrix using MUMPS
-
-### Damage Solver
-Solver for the continuum damage mechanics model, damage_transport()
-
-variable_name [default value]\
-damage_stress [0.07]\
-damage_rate [0.3]\
-healing_strain_rate [2e-10 * year]\
-healing_rate [0.1]\
-
-$\textsf{\color{#3F00FF}**kwargs}$\
-damage\
-strain_rate\
-membrane_stress\
-damage_inflow
-
-flux\
-damage
-  
-### Flow Solver
-
 
 #### Diagnostic Solver
 
