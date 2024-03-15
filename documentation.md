@@ -101,7 +101,7 @@ Functions defined in model:
 - energy_density(self, T, f):
   - Return the energy density for ice at the given temperature and melt fraction
 
-### Hybrid
+### Hybrid  LEFT OFF HERE
 Can resolve both plug and shear flow
 
 Functions included outside of model:
