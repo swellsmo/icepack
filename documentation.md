@@ -101,16 +101,20 @@ Functions defined in model:
 - energy_density(self, T, f):
   - Return the energy density for ice at the given temperature and melt fraction
 
-### Hybrid  LEFT OFF HERE
+### Hybrid
 Can resolve both plug and shear flow
+```
+model = icepack.models.HybridModel(friction=friction_function)
+solver = icepack.solvers.FlowSolver(model, **opts)
+```
 
-Functions included outside of model:
+Functions defined outside of model:
 - gravity(**kwargs)
   -  velocity, thickness, surface
 - terminus(**kwargs)
   - Return the terminal stress part of the hybrid model action functional
   - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, surface
-  - **opts: ice_front_ids
+  - $\textsf{\color{red}**opts}$: ice_front_ids
 -  _effective_strain_rate(ε_x, ε_z, ε_min)
 - stresses(**kwargs)
   - Calculate the membrane and vertical shear stresses for the given horizontal and shear strain rates and fluidity
@@ -132,18 +136,18 @@ $\textsf{\color{#3F00FF}**kwargs}$ taken by model:
 - side_friction_xz
 - gravity
 - terminus
-- normal_flow_pentaly
+- pentaly
 - continuity
 
-**opts taken by model: 
+$\textsf{\color{red}**opts}$ taken by model: 
 - ice_front_ids
 - side_wall_ids
 
-Functions included inside model:
+Functions defined inside model:
 - action(self, **kwargs)
- - Return the action functional that gives the hybrid model as its Euler-Lagrange equations
- - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
- - **opts: ice_front_ids, side_wall_ids
+  - Return the action functional that gives the hybrid model as its Euler-Lagrange equations
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+  - $\textsf{\color{red}**opts}$: ice_front_ids, side_wall_ids
 - scale(self,**kwargs)
   - Return the positive, convex part of the action functional. The positive part of the action functional is used as a dimensional scale to determine when to terminate an optimization algorithm.
   - $\textsf{\color{#3F00FF}**kwargs}$: velocity
@@ -154,18 +158,72 @@ Functions included inside model:
 
 ### Ice Shelf
 Class for modelling the flow of floating ice shelves
+```
+model = icepack.models.IceShelf()
+solver = icepack.solvers.FlowSolver(model, **opts)
+```
 
 This class provides functions that solve for the velocity and thickness of a floating ice shelf. The relevant physics can be found in ch. 6 of Greve and Blatter.
   
-viscosity\
-gravity\
-terminus\
-side_friction\
-penalty
+Functions defined outside of the model:
+- gravity(**kwargs)
+  - Return the gravitational part of the ice shelf action functional
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+- terminus(**kwargs)
+  - Return the terminus stress part of the ice shelf action functional
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+
+
+$\textsf{\color{#3F00FF}**kwargs}$ taken by model:
+- viscosity
+- gravity
+- terminus
+- side_friction
+- penalty
+- continuity
+
+$\textsf{\color{red}**opts}$ taken by model:
+- ice_front_ids
+- side_wall_ids
+
+Functions defined inside of model:
+- action(self, **kwargs)
+  - Return the action functional that gives the ice shelf diagnostic model as the Euler-Lagrange equations
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+  - $\textsf{\color{red}**opts}$: ice_front_ids, side_wall_ids
+- scale(self, **kwargs)
+  - Return the positive, convex part of the action functional
+  - The positive part of the action functional is used as a dimensional scale to determine when to terminate an optimization algorithm.
+- quadrature_degree(self, **kwargs)
+  - Return the quadrature degree necessary to integrate the action functional accurately
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness
+
   
 ### Ice Stream
 Assumes plug flow, e.g. the velocity is roughtly constant with depth
-  
+```
+model = icepack.models.IceStream(friction=friction_function)
+solver = icepack.solvers.FlowSolver(model, **opts)
+```
+
+Functions defined outside of model:
+- gravity(**kwargs)
+  - Return the gravitational part of the ice stream action functional: $E(u) = -\int_\Omega\rho_Igh\nabla s\cdot u\; dx$
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, surface
+- terminus(**kwargs)
+  - Return the terminal stress part of the ice stream action functional
+  - The power exerted due to stress at the ice calving terminus $\Gamma$ is $E(u) = \frac{1}{2}\int_\Gamma\left(\rho_Igh^2 - \rho_Wgd^2\right) u\cdot \nu\, ds$
+  - $\textsf{\color{#3F00FF}**kwargs}$: velocity, thickness, surface
+
+
+$\textsf{\color{#3F00FF}**kwargs}$:
+- viscosity
+- friction
+- side_friction
+- penalty
+- gravity
+- terminus
+- continuity
 
 ### Shallow Ice
 Assumes shear flow, e.g. the speed at the ice base is much smaller than at the ice surface
@@ -239,12 +297,12 @@ The main solvers I use are FlowSolver, HeatTransportSolver, and DamageSolver
 Solver for the continuum damage mechanics model, damage_transport()
   
 ### Flow Solver
-When initiating a solver, pass it any arguments that never change throughout a simulation.\
+When initiating a flow solver, pass it any arguments ($\textsf{\color{red}**opts}$) that never change throughout a simulation.\
 `solver = icepack.solvers.FlowSolver(model, **opts)`
 
 Includes ImplicitEuler and LaxWendroff solvers
 
-##### **opts can include:
+##### $\textsf{\color{red}**opts}$ can include:
       model: 
           The flow model object -- IceShelf, IceStream, etc.
       dirichlet_ids : list of int, optional
