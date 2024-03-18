@@ -136,7 +136,7 @@ $\textsf{\color{#3F00FF}**kwargs}$ taken by model:
 - side_friction_xz
 - gravity
 - terminus
-- pentaly
+- penalty
 - continuity
 
 $\textsf{\color{red}**opts}$ taken by model: 
