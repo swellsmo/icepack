@@ -56,3 +56,10 @@ melting_temperature = 273.15
 
 #: latent heat of melting of ice (m^2 / yr^2)
 latent_heat = 334e3 * year**2
+
+
+#: initial values from the damage transport model
+damage_stress=0.07,
+damage_rate=0.3,
+healing_strain_rate=2e-10 * year,
+healing_rate=0.1,
