@@ -1,11 +1,11 @@
 # Documentation
-Disclaimer: This is my best interpretation of how icepack works. It could be very, very wrong lol
+Disclaimer: This is my best interpretation of how icepack works, and I have modified some of the code to fit my purposes better It could be very, very wrong lol
   ## Commands to Open Docker Container
   Build a container:\
   `docker build -t icepack_image:0.1.4 -f F:\icepack\Dockerfile.txt .`
 
   Run the container:\
-  `docker run -it --rm --publish 8888:8888 -v F:\icepack:/products -v "F:\QGIS Layers":/mynotebooks/data -v F:\icepack\Notebooks:/mynotebooks -v C:\Documents\GitHub\icepack:/github icepack_image:0.1.3`\
+  `docker run -it --rm --publish 8888:8888 -v F:\icepack:/products -v "F:\QGIS Layers":/mynotebooks/data -v F:\icepack\Notebooks:/mynotebooks -v C:\Documents\GitHub\icepack\icepack:/home/firedrake/icepack icepack_image:0.1.3`\
   `source ~/firedrake/bin/activate`\
  `cd /mynotebooks`\
   `jupyter notebook --ip 0.0.0.0 --no-browser`
@@ -68,6 +68,7 @@ damage_solver = icepack.solvers.DamageSolver(damage_model)
   - healing_strain_rate [2e-10 * year]
   - healing_rate [0.1]
 
+  Note: The source code does not allow for the above kwargs to be added, I modified the code to do this
 
   Additional $\textsf{\color{#3F00FF}**kwargs}$: damage, strain_rate, membrane_stress, damage_inflow, flux,
   
