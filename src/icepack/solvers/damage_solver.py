@@ -114,5 +114,5 @@ class DamageSolver:
         D.assign(1 / 3 * D + 2 / 3 * (D2 + dD))
 
         S = self.model.sources(**self.fields)
-        D.project(min_value(max_value(D + δt * S, 0), .9))
+        D.project(min_value(max_value(D + δt * S, 0), 1))
         return D.copy(deepcopy=True)
