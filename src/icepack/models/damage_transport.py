@@ -21,7 +21,7 @@ from operator import itemgetter
 import firedrake
 from firedrake import inner, sqrt, det, min_value, conditional
 from .transport import TransportEquation
-from icepack.constants import year
+from icepack.constants import year, damage_stress, damage_rate, healing_strain_rate, healing_rate
 from icepack.utilities import eigenvalues
 
 
@@ -42,8 +42,29 @@ class DamageTransport(TransportEquation):
         # self.healing_rate = healing_rate
 
     def sources(self, **kwargs):
-        keys = ("damage", "velocity", "strain_rate", "membrane_stress", "damage_stress", "damage_rate", "healing_strain_rate", "healing_rate")
-        D, u, ε, M, σ_d, γ_d, ε_h, γ_h = itemgetter(*keys)(kwargs)
+        keys = ("damage", "velocity", "strain_rate", "membrane_stress")
+        D, u, ε, M = itemgetter(*keys)(kwargs)
+
+        if "damage_stress" in kwargs.keys():
+            σ_d = kwargs["damage_stress"]
+        else:
+            σ_d = damage_stress
+
+        if "damage_rate" in kwargs.keys():
+            γ_d = kwargs["damage_rate"]
+        else:
+            γ_d = damage_rate
+
+        if "healing_strain_rate" in kwargs.keys():
+            ε_h = kwargs["healing_strain_rate"]
+        else:
+            ε_h = healing_strain_rate
+
+        if "healing_rate" in kwargs.keys():
+            γ_h = kwargs["healing_rate"]
+        else:
+            γ_h = healing_rate
+        
 
         # Increase/decrease damage depending on stress and strain rates
         ε_1 = eigenvalues(ε)[0]
