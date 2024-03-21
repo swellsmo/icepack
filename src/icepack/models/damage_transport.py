@@ -21,59 +21,59 @@ from operator import itemgetter
 import firedrake
 from firedrake import inner, sqrt, det, min_value, conditional
 from .transport import TransportEquation
-from icepack.constants import year, damage_stress, damage_rate, healing_strain_rate, healing_rate
+from icepack.constants import year#, damage_stress, damage_rate, healing_strain_rate, healing_rate
 from icepack.utilities import eigenvalues
 
 
 class DamageTransport(TransportEquation):
     def __init__(
         self,
-        # damage_stress=0.07,
-        # damage_rate=0.3,
-        # healing_strain_rate=2e-10 * year,
-        # healing_rate=0.1,
+        damage_stress=1.0,
+        damage_rate=0.1,
+        healing_strain_rate=2e-10 * year,
+        healing_rate=0.5,
     ):
         super(DamageTransport, self).__init__(
             field_name="damage", source_name=None, conservative=False
         )
-        # self.damage_stress = damage_stress
-        # self.damage_rate = damage_rate
-        # self.healing_strain_rate = healing_strain_rate
-        # self.healing_rate = healing_rate
+        #self.damage_stress = damage_stress
+        #self.damage_rate = damage_rate
+        #self.healing_strain_rate = healing_strain_rate
+        #self.healing_rate = healing_rate
+
+        if "damage_stress" in kwargs.keys():
+             self.damage_stress = kwargs["damage_stress"]
+        else:
+             self.damage_stress = damage_stress
+
+        if "damage_rate" in kwargs.keys():
+             self.damage_rate = kwargs["damage_rate"]
+        else:
+             self.damage_rate = damage_rate
+
+        if "healing_strain_rate" in kwargs.keys():
+             self.healing_strain_rate = kwargs["healing_strain_rate"]
+        else:
+             self.healing_strain_rate = healing_strain_rate
+
+        if "healing_rate" in kwargs.keys():
+             self.healing_rate = kwargs["healing_rate"]
+        else:
+             self.healing_rate = healing_rate
 
     def sources(self, **kwargs):
         keys = ("damage", "velocity", "strain_rate", "membrane_stress")
         D, u, ε, M = itemgetter(*keys)(kwargs)
 
-        if "damage_stress" in kwargs.keys():
-            σ_d = kwargs["damage_stress"]
-        else:
-            σ_d = damage_stress
-
-        if "damage_rate" in kwargs.keys():
-            γ_d = kwargs["damage_rate"]
-        else:
-            γ_d = damage_rate
-
-        if "healing_strain_rate" in kwargs.keys():
-            ε_h = kwargs["healing_strain_rate"]
-        else:
-            ε_h = healing_strain_rate
-
-        if "healing_rate" in kwargs.keys():
-            γ_h = kwargs["healing_rate"]
-        else:
-            γ_h = healing_rate
-        
-
+       
         # Increase/decrease damage depending on stress and strain rates
         ε_1 = eigenvalues(ε)[0]
         σ_e = sqrt(inner(M, M) - det(M))
 
-        # ε_h = firedrake.Constant(healing_strain_rate)
-        # σ_d = firedrake.Constant(damage_stress)
-        # γ_h = firedrake.Constant(healing_rate)
-        # γ_d = firedrake.Constant(damage_rate)
+        ε_h = firedrake.Constant(healing_strain_rate)
+        σ_d = firedrake.Constant(damage_stress)
+        γ_h = firedrake.Constant(healing_rate)
+        γ_d = firedrake.Constant(damage_rate)
 
         healing = γ_h * min_value(ε_1 - ε_h, 0)
         fracture = γ_d * conditional(σ_e - σ_d > 0, ε_1, 0.0) * (1 - D)
