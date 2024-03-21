@@ -5,7 +5,7 @@ Disclaimer: This is my best interpretation of how icepack works, and I have modi
   `docker build -t icepack_image:0.1.4 -f F:\icepack\Dockerfile.txt .`
 
   Run the container:\
-  `docker run -it --rm --publish 8888:8888 -v F:\icepack:/products -v "F:\QGIS Layers":/mynotebooks/data -v F:\icepack\Notebooks:/mynotebooks -v C:\Documents\GitHub\icepack\icepack:/home/firedrake/icepack icepack_image:0.1.3`
+  `docker run -it --rm --publish 8888:8888 -v F:\icepack:/products -v "F:\QGIS Layers":/mynotebooks/data -v F:\icepack\Notebooks:/mynotebooks -v C:\Users\sewel\Documents\GitHub\icepack:/home/firedrake/icepack icepack_image:0.1.3`
 
   `source ~/firedrake/bin/activate`
 
