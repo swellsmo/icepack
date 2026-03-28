@@ -36,9 +36,12 @@ jobs:
           jupyter nbconvert --to notebook --execute notebooks/how-to/03-adaptivity.ipynb
 
   test:
+    strategy:
+      matrix:
+        version: [2025.10.2, 2026.4.0]
     runs-on: ubuntu-latest
     container:
-      image: docker.io/firedrakeproject/firedrake-vanilla-default:2025.10.2
+      image: docker.io/firedrakeproject/firedrake-vanilla-default:${{ matrix.version }}
       options: --user root
     steps:
       - name: Install dependences
