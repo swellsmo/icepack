@@ -23,6 +23,7 @@ import ufl
 import firedrake
 from firedrake import sqrt, inner
 from icepack.constants import year, ideal_gas as R, glen_flow_law, strain_rate_min
+from icepack.utilities import geometric_dimension
 from icepack.calculus import sym_grad, trace, Identity
 
 transition_temperature = 263.15  # K
@@ -92,7 +93,7 @@ def membrane_stress(**kwargs):
     n = kwargs.get("flow_law_exponent", glen_flow_law)
     ε_e = _effective_strain_rate(ε, ε_min)
     μ = 0.5 * A ** (-1 / n) * ε_e ** (1 / n - 1)
-    d = ufl.domain.extract_unique_domain(ε).geometric_dimension()
+    d = geometric_dimension(ufl.domain.extract_unique_domain(ε))
     I = Identity(d)
     return 2 * μ * (ε + trace(ε) * I)
 
