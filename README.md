@@ -51,13 +51,15 @@ USER firedrake
 
 ENTRYPOINT /usr/local/bin/entry.sh
 ```
-
-Create a file named Dockerfile in your machine and paste this text into it. Then in terminal, navigate to the folder that contains Dockerfile and run:
+### Building a Docker image
+Create a file named Dockerfile in your machine and paste the above text into it. Then in terminal, navigate to the folder that contains Dockerfile and run:
 ```
   docker build -t <image name>:<tag> .
 ```
 
 The `<tag>` feature allows you to have multiple instances of a Docker image with the same name. For example, if you have an image named `icepack` and you want to modify it slightly but keep the old instance in case things break, you can use the command `docker build -t icepack:main .` for your base image and `docker build -t icepack:1.0.0 .` for your modified image.
+
+The `.` at the end of the command is the Build Context. This tells the builder what files it has access to when building. If the dockerfile is in a different directory, replace `.` with the path to the dockerfile directory. For example, I keep my dockerfile in a subdirectory called 'docker' within my icepack folder because otherwise it tries to access the .git directory in my icepack folder and throws up errors. When I build, I set the context as `./docker`
 
 NOTE: If your Dockerfile has any extensions, e.g. Dockerfile.txt, the above command won't work. Instead, add the flag `-f` to the command to direct it to the location (including the extension) of the Dockerfile:
 ```
@@ -66,7 +68,10 @@ docker build -t <image name>:<tag> -f /path/to/Dockerfile.txt .
 You can run this command from any directory in terminal if you use the absolute path to the Dockerfile.
 
   ## Starting Shell Script
-  Use this script to enter the docker container and immediately start the notebook by opening the terminal and running `sh <name of script>.sh`
+  I use a shell script to open the docker image and immediately start the jupyter notebook. This allows me to run a simple command rather than having to remember the exact flags and mounts I need within the container. This script is based off of my workflow and file organization, so you'll need to modify the mounts to your liking. I've included a detailed description of what everything does below. 
+
+  
+  Create a file <name of script>.sh. Paste the code block below into the sh file. Open the terminal and run `sh <name of script>.sh`. 
   ```
   #!/bin/bash
 set -e
@@ -74,18 +79,19 @@ set -e
 IMAGE_NAME="<image name>:<tag>" # Change this to your project name (must be lowercase)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VIR_ENV_DIR="/home/firedrake"
 
-mkdir -p "$SCRIPT_DIR/data"
-mkdir -p "$SCRIPT_DIR/products"
-mkdir -p "$SCRIPT_DIR/code"
-mkdir -p "$SCRIPT_DIR/meshes"
+mkdir -p "$SCRIPT_DIR/notebooks"
+mkdir -p "$SCRIPT_DIR/notebooks/data"
+mkdir -p "$SCRIPT_DIR/notebooks/meshes"
+mkdir -p "$SCRIPT_DIR/src"
 
 MOUNTS=(
-    -v "$SCRIPT_DIR:/home/firedrake/icepack"
-    -v "$SCRIPT_DIR/data:/home/firedrake/icepack/data"
-    -v "$SCRIPT_DIR/products:/home/firedrake/icepack/products"
-    -v "$SCRIPT_DIR/code:/home/firedrake/icepack/code"
-    -v "$SCRIPT_DIR/meshes:/home/firedrake/icepack/meshes"
+    -v "$SCRIPT_DIR:$VIR_ENV_DIR/icepack"
+    -v "$SCRIPT_DIR/notebooks:$VIR_ENV_DIR/icepack/notebooks"
+    -v "$SCRIPT_DIR/notebooks/data:$VIR_ENV_DIR/icepack/notebooks/data"
+    -v "$SCRIPT_DIR/notebooks/meshes:$VIR_ENV_DIR/icepack/notebooks/meshes"
+    -v "$SCRIPT_DIR/src:$VIR_ENV_DIR/icepack/src"
 )
 
 docker run --rm -it \
@@ -95,6 +101,9 @@ docker run --rm -it \
     "$IMAGE_NAME"
 ```
 ### Breaking down the components of the shell script:
+`set -e` stops the execution of a script if any command in the script has an error and returns the exit code of the command within the script that failed
+
+`IMAGE_NAME`, `SCRIPT_DIR`, and `VIR_ENV_DIR` are variables used by the script. 
 
 Important note: at least on Mac, you can't open the Jupyter notebooks in browser unless you have the `-p` or `--publish` flag in your docker run command. The above script publishes the docker container to port 8887, which is the same port exposed in the Dockerfile
 
