@@ -17,30 +17,43 @@ Disclaimer: This is my best interpretation of how icepack works. It could be ver
 
 A lot of this is probably unnecessary or over explained. My purpose in making and maintaining this documentation is to create the document I wish I had when I was starting out as an undergrad and had 0 idea how computers worked. Even as a grad student, I have maybe 3 brain cells that understand what computering is. 
 
-Hardware/software in case it's relevant to anyone: 2024 Mac Mini with an M4 chip running Sequoia 15.7.3
+Hardware/software in case it's relevant to anyone: 2024 Mac Mini with an M4 chip running Tahoe 26.6.1<sup>[[1]](#tahoe)</sup>
 
-  ## Dockerfile
+## Docker 🐳
+
+Docker is a containerization software. Containerization is the concept of sending out software packages with all of the files, code, and libraries it needs to run straight out of the box on any operating system. Below, I will be talking about Docker images and containers. A docker image is a read-only template that tells the daemon how to create containers with all of the dependencies needed to run things installed. The container is a running instance of the image. You can have multiple containers running off of a single image, but the containers do not talk to each other or the files in the host machine. 
+
+---
+
+  <details open>  
+    <summary> <b>Dockerfile</b> </summary>
+    The Dockerfile is the cornerstone of the docker process. It tells the Docker daemon (the daemon manages everything behind the scenes) which components to include in your image build. 
+ 
   ```
 # check=skip=InvalidBaseImagePlatform
 FROM firedrakeproject/firedrake-vanilla:2025-01
+
+ENV PORT=8870
+
 RUN sudo apt update && sudo apt install patchelf
 RUN . /home/firedrake/firedrake/bin/activate && \
     git clone https://github.com/icepack/icepack.git && \
-    pip install --editable ./icepack && \
-    pip install --upgrade jupyter jupyterlab jupyter_server jupyter_client jupyter_core && \
-    pip install netcdf4 ipympl ipykernel ipympl && \
-    python -m ipykernel install --user --name=firedrake && \
-    python3 -m pip install siphash24
-EXPOSE 8887
+    python3.12 -m pip install --upgrade pip && \
+    pip3 install --editable ./icepack && \
+    pip install ipykernel && \
+    pip3 install --upgrade jupyter jupyterlab notebook jupyter_server jupyter_core && \
+    pip3 install netcdf4 ipympl && \
+    python3 -m pip install siphash24 && \
+    python3 -m ipykernel install --user --name=firedrake
 
-# Set up a shell script within the container to start the virtual
-# environment and open jupyter notebooks when entering container
-USER 0 
-RUN touch /usr/local/bin/entry.sh && \
-    echo "#!/bin/bash" >> /usr/local/bin/entry.sh && \
-    echo "source ~/firedrake/bin/activate" >> /usr/local/bin/entry.sh && \
-    echo "cd ~/icepack/notebooks" >> /usr/local/bin/entry.sh && \
-    echo "jupyter notebook --ip 0.0.0.0 --no-browser --port 8887" >> /usr/local/bin/entry.sh && \
+EXPOSE "$PORT"
+
+# Set up a shell script within the container to start the virtual environment 
+# and open jupyter notebooks when entering container
+USER 0
+
+COPY entry.sh /usr/local/bin/
+RUN echo -e "\njupyter notebook --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \
     chmod +x /usr/local/bin/entry.sh
 
 # Set up bashrc for interactive sessions (courtesy of Justin P Linick)
@@ -49,23 +62,92 @@ RUN touch /root/.bashrc && \
 
 USER firedrake
 
-ENTRYPOINT /usr/local/bin/entry.sh
+ENTRYPOINT ["/usr/local/bin/entry.sh"]
 ```
-### Building a Docker image
+
+<details> 
+  <summary> Breaking down the Dockerfile line by line </summary>
+  
+* `# check=skip=InvalidBaseImagePlatform` is a Parser Directive and is optional. This specific directive suppresses an (in my opinion) annoying warning that pops up if you build the image on an operating system that is different from the operating system the base image was built from. I've included more details below for anyone who is interested
+     * <details> <summary> What is a parser directive? </summary>
+       When running a build, Docker passes the Dockerfile through a parser, which then hands the contents of the file over to the daemon. A Parser Directive tells the parser how to handle the contents of the file. A common example of this is setting the escape character, which tells the daemon to treat the character as a new line. On Linux and Unix platforms, the escape character is `\`, but in Windows, that denotes a file path. You can add a parser directive `# escape=\` to tell the parser to treat that character as the escape character. </details>
+     * <details> 
+       <summary> What does the parser directive 'check' do? </summary> 
+       Docker runs build checks when building an image to see if the Dockerfile adheres to their predefined "Best Practices". Following the rules helps avoid errors, but also can be kind of annoying if you've found ways to mitigate the errors elsewhere in your workflow. The `# check` parser directive tells the parser how to run build checks on the image. In this case, the check skips the step of checking which build platform (operating system) the base image uses versus which build platform your machine is running. A full list of build checks is available [here](https://docs.docker.com/reference/build-checks/). When a check fails, it doesn't mean the build has failed, but it might throw up errors or fail in future versions of Docker.  </details>
+     * Note: If including this, it MUST go in the first line of the Dockerfile, even before any comments. Otherwise, the parser will interpret it as another comment.
+* `FROM firedrakeproject/firedrake-vanilla:2025-01` is the base image you want to build your Docker image on top of. More details about the `FROM` command are available [here](https://dockerbuild.com/reference/from)
+* `ENV PORT=8870` Sets the environment variable PORT to 8870. Environmental variables are available to containers running off of this image. 
+     * I use this variable so I can change the port my computer communicates to the container on just in one location. I specifically use ENV here over ARG because my start.sh script accesses the PORT variable to determine which port to publish in the `docker run` command.
+* `RUN` commands run the following bits of code. Each command is separated by `&&`, and `\` denotes a line break to the parser. The only two worth mentioning here that aren't package installation are:
+     * `. /home/firedrake/firedrake/bin/activate`: This activates the firedrake virtual environment and must be the first command of the `RUN` block. From my limited understanding, firedrake is installed inside the virtual environment, not outside of it. Thus, we must first activate the virtual environment and install everything icepack needs inside of the environment. We will also need to activate the virtual environment any time we want to use icepack (more on this later). Further reading recommended on the icepack install page: <https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/>
+     * `python3 -m ipykernel install --user --name=firedrake`: This makes a kernel called 'firedrake' that Jupyter notebooks can communicate with when we run the demo notebooks. This must be run inside the virtual environment
+* `EXPOSE "$PORT"`: Tells Docker that the system listens on the specified network port. Here, I'm using the predefined variable `$PORT` so that I only need to change the value in one location if I want to expose a different port.
+     * NOTE: This does not publish the port. Publishing the port means setting up a connection between the Docker container and the computer. EXPOSE is mostly a communication to whoever is running the container that the specific port needs to be published. [This](https://dhavalgojiya.hashnode.dev/understanding-dockers-expose-keyword-4-port-mapping-scenarios-explained) write up provides some good examples of what `EXPOSE` means in terms of container behavior.
+* `USER 0`: Sets the user to root so that we can mess around with things in the root folder without running into permissions errors
+* `COPY entry.sh /usr/local/bin/` This takes a file entry.sh from my build context and copies its contents to /usr/local/bin within the image. entry.sh is a small shell script I built so I don't have to repeatedly type `source ~/firedrake/bin/activate` when opening the container lol. I have included my build context folder in the github, but the shell script is relatively simple:
+     * <details> 
+       <summary> entry.sh</summary>
+
+        ```
+        #!/bin/bash
+
+        source ~/firedrake/bin/activate
+        cd ~/icepack/notebooks
+        ```
+        </details>
+
+* `RUN echo -e "\njupyter notebook --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \`
+     * This adds a new line to the entry.sh file that reads `jupyter notebook --ip 0.0.0.0 --no-browser --port 8870`
+          * The --port flag is necessary for the notebook to run and communicate with your computer! 
+     * I add this line here rather than in the script file itself because I want to be able to change the port value via the `$PORT` variable
+* `chmod +x /usr/local/bin/entry.sh`: continuation of the previous `RUN` command. Changes permissions on the entry.sh script so that any user can run it, not just the root user
+* OPTIONAL: `RUN touch /root/.bashrc && \`: Creates a file called .bashrc in the /root directory.
+* OPTIONAL:  `echo "PS1='🐳 \[\e[1;32m\]\u@firedrake\[\e[m\]:\[\e[1;34m\]\w\[\e[m\]\\$ '" >> /root/.bashrc`
+     * Adds the line `PS1='🐳 \[\e[1;32m\]\u@firedrake\[\e[m\]:\[\e[1;34m\]\w\[\e[m\]\\$ '` to /root/.bashrc.
+     * .bashrc is a file that the Bash shell reads and runs every time you start up an interactive session. More info available [here](https://www.digitalocean.com/community/tutorials/bashrc-file-in-linux)
+     * The variable `PS1` controls the prompt within your Bash terminal session. This particular one turns your username green and adds a little whale emoji beside it :)
+     * I don't typically see this behavior because I'm in the notebook and my entry.sh script bypasses command line stuff
+* `USER firedrake`: changes user from 0 (root) back to firedrake. It is best practice to limit root access in applications, and we don't really need it anyways because we're not changing root directory aside from
+* `ENTRYPOINT ["/usr/local/bin/entry.sh"]`: Tells Docker to run the script entry.sh (that we copied and modified earlier in the script) every time a container starts
+     * The script entry.sh activates the firedrake virtual environment, changes our directory to the ~/icepack/notebooks folder, and starts up a jupyter notebook. Basically we enter the container and boom we immediately get a link to open the notebooks. Change the `cd ~/icepack/notebooks` line if the notebooks you're working on are in a different directory
+     * Entrypoint can be overridden in the `docker run` command with the flag `--entrypoint <command>`. When I am troubleshooting the image, I often run with `--entrypoint /bin/bash` so I can poke around inside the virtual environment without having the notebook up.
+     * Also worth it to note, under this setup, the container will end as soon as you quit jupyter. It works best this way for my workflow but everyone has different preferences! You can modify entry.sh within the build context folder to change what happens at startup.
+
+</details> <!--- End of breaking down dockerfile --->
+
+</details> <!--- End of Dockerfile section --->
+
+---
+
+  <details open>
+    <summary> <b>Building a Docker image</b> </summary>
 Create a file named Dockerfile in your machine and paste the above text into it. Then in terminal, navigate to the folder that contains Dockerfile and run:
+    
 ```
   docker build -t <image name>:<tag> .
 ```
+    
+#### Tag
+The `<tag>` feature allows you to have multiple instances of a Docker image with the same name. For example, if you have an image named `icepack` and you want to modify it slightly but keep the old instance in case things break, you can use the command `docker build -t icepack:main .` for your base image and `docker build -t icepack:1.0.0 .` for your modified image. It is important to keep old versions of your images so you can revert back to something you know works when you inevitably break things! 
 
-The `<tag>` feature allows you to have multiple instances of a Docker image with the same name. For example, if you have an image named `icepack` and you want to modify it slightly but keep the old instance in case things break, you can use the command `docker build -t icepack:main .` for your base image and `docker build -t icepack:1.0.0 .` for your modified image.
+#### Build Context
+The `.` at the end of the command is the Build Context. This tells the builder what files it has access to when building. In this case, `.` tells Docker to build the image with all the folders and files in the current directory. If the dockerfile is in a different directory, replace `.` with the relative path to the dockerfile directory. For example, I keep my Dockerfile in a subdirectory called 'docker' within my icepack folder because otherwise it tries to access the .git directory in my icepack folder and throws up errors. When I build, I set the context as `./docker`. I found this website to be a super good overview of how the build context works: <https://dockerbuild.com/reference/build-context>.
 
-The `.` at the end of the command is the Build Context. This tells the builder what files it has access to when building. If the dockerfile is in a different directory, replace `.` with the path to the dockerfile directory. For example, I keep my dockerfile in a subdirectory called 'docker' within my icepack folder because otherwise it tries to access the .git directory in my icepack folder and throws up errors. When I build, I set the context as `./docker`
-
-NOTE: If your Dockerfile has any extensions, e.g. Dockerfile.txt, the above command won't work. Instead, add the flag `-f` to the command to direct it to the location (including the extension) of the Dockerfile:
+#### Other flags
+`-f, --file`: By default, the docker build command looks for the file `PATH/Dockerfile` to build the image off of. If your Dockerfile has any extensions or name other than `Dockerfile`, e.g. Dockerfile.txt or Dockerfile_icepack, the builder won't be able to find the file. Add the flag `-f` to the command to direct it to the location and name of the file you want to build off of:
 ```
 docker build -t <image name>:<tag> -f /path/to/Dockerfile.txt .
 ```
-You can run this command from any directory in terminal if you use the absolute path to the Dockerfile.
+You can run this command from any directory in terminal if you use the absolute path to the Dockerfile. The Dockerfile does not need to be in the build context directory when you use this flag. However, running this command from any directory can cause a lot of lag in building your Docker image as it will send the entire build context to the daemon to build the image. 
+
+
+#### More information
+I stumbled across [this website](https://dockerbuild.com/courses/) while trying to find the best words to explain the build context in an easy-to-understand way. It does a phenomenal job at breaking everything down even further than the Docker manuals, which is great if you're like me and totally new to Docker. If you're interested in learning more about how a Dockerfile works and how to build your own, the Courses tab is a great place to start! 
+
+  </details> <!--- End of Building a Docker Image --->
+
+> [!NOTE]
+> <a name="tahoe"><b>[1]</b></a>: For some reason upgrading to Tahoe breaks a lot of things about Docker (I wish I had stuck with Sequoia). In particular, Tahoe breaks websocket connections with Docker, which is the open line of communication between your Docker container and the Jupyter Notebook. I don't know what changed, but I started getting stuck in websocket_timeout loops when trying to do anything on my notebooks. Thankfully, there was a simple fix: go to Docker Desktop, open settings and look for `General>Choose Virtual Machine Manager (VMM)` and make sure the toggle for Use Rosetta is OFF. 
 
   ## Starting Shell Script
   I use a shell script to open the docker image and immediately start the jupyter notebook. This allows me to run a simple command rather than having to remember the exact flags and mounts I need within the container. This script is based off of my workflow and file organization, so you'll need to modify the mounts to your liking. I've included a detailed description of what everything does below. 
@@ -105,7 +187,8 @@ docker run --rm -it \
 
 `IMAGE_NAME`, `SCRIPT_DIR`, and `VIR_ENV_DIR` are variables used by the script. 
 
-Important note: at least on Mac, you can't open the Jupyter notebooks in browser unless you have the `-p` or `--publish` flag in your docker run command. The above script publishes the docker container to port 8887, which is the same port exposed in the Dockerfile
+> [!TIP]
+> At least on Mac, you can't open the Jupyter notebooks in browser unless you have the `-p` or `--publish` flag in your docker run command. The above script publishes the docker container to port 8887, which is the same port exposed in the Dockerfile
 
   ## Vocaublary
   *args - non-keyworded arguments (Requires correct order of arguments passed to a function)\
