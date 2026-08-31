@@ -43,6 +43,7 @@ RUN . /home/firedrake/firedrake/bin/activate && \
     pip install ipykernel && \
     pip3 install --upgrade jupyter jupyterlab notebook jupyter_server jupyter_core && \
     pip3 install netcdf4 ipympl && \
+    pip install lckr_jupyterlab_variableinspector ipywidgets pandas numpy pyspark torch && \
     python3 -m pip install siphash24 && \
     python3 -m ipykernel install --user --name=firedrake
 
@@ -53,7 +54,7 @@ EXPOSE "$PORT"
 USER 0
 
 COPY entry.sh /usr/local/bin/
-RUN echo -e "\njupyter notebook --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \
+RUN echo -e "\njupyter lab --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \
     chmod +x /usr/local/bin/entry.sh
 
 # Set up bashrc for interactive sessions (courtesy of Justin P Linick)
@@ -96,10 +97,11 @@ ENTRYPOINT ["/usr/local/bin/entry.sh"]
         ```
         </details>
 
-* `RUN echo -e "\njupyter notebook --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \`
-     * This adds a new line to the entry.sh file that reads `jupyter notebook --ip 0.0.0.0 --no-browser --port 8870`
+* `RUN echo -e "\njupyter lab --ip 0.0.0.0 --no-browser --port $PORT" >> /usr/local/bin/entry.sh && \`
+     * This adds a new line to the entry.sh file that reads `jupyter lab --ip 0.0.0.0 --no-browser --port 8870`
           * The --port flag is necessary for the notebook to run and communicate with your computer! 
      * I add this line here rather than in the script file itself because I want to be able to change the port value via the `$PORT` variable
+     * This line differs slightly from the official icepack documentation, which opens the notebook directory in jupyter notebooks. This opens the directory in jupyter lab, which I prefer because I have an optional extension called "Variable Inspector" that I like to use (package lckr_jupyterlab_variableinspector). If you prefer notebooks, replace "lab" with "notebook" and it works exactly the same
 * `chmod +x /usr/local/bin/entry.sh`: continuation of the previous `RUN` command. Changes permissions on the entry.sh script so that any user can run it, not just the root user
 * OPTIONAL: `RUN touch /root/.bashrc && \`: Creates a file called .bashrc in the /root directory.
 * OPTIONAL:  `echo "PS1='🐳 \[\e[1;32m\]\u@firedrake\[\e[m\]:\[\e[1;34m\]\w\[\e[m\]\\$ '" >> /root/.bashrc`
