@@ -525,6 +525,9 @@ thickness\
 
 ## Graph Types
 
+> [!TIP]
+> do `axes.__dict__` to find a full list of axes attributes you can play with. `axes.__dict__.keys()` will give you just the names of the things you can mess with. Omitting the `.keys()` will give you the current values
+
 ### triplot
 Plot a mesh with a different color for each boundary segment\
 ![A triplot of a sample glacier mesh, with the boundary segments labeled](https://github.com/swellsmo/icepack/assets/116534525/aa8fc611-2dd0-44ac-9847-2eafebdbf2d0)
