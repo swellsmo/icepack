@@ -19,14 +19,26 @@ A lot of this is probably unnecessary or over explained. My purpose in making an
 
 Hardware/software in case it's relevant to anyone: 2024 Mac Mini with an M4 chip running Tahoe 26.6.1<sup>[[1]](#tahoe)</sup>
 
-## Docker 🐳
+## How the heck do I download icepack?
+Thinking of installing icepack and can't wrap your brain around how to get started? This is the section for you! It took me so long to figure this stuff out because I needed a very detailed explanation for the "why" behind every step and couldn't find that. I was also brand new to Docker, command line programming, and python when I started tinkering with icepack. I will always be a MATLAB girlie. 
 
-Docker is a containerization software. Containerization is the concept of sending out software packages with all of the files, code, and libraries it needs to run straight out of the box on any operating system. Below, I will be talking about Docker images and containers. A docker image is a read-only template that tells the daemon how to create containers with all of the dependencies needed to run things installed. The container is a running instance of the image. You can have multiple containers running off of a single image, but the containers do not talk to each other or the files in the host machine. 
+I run icepack via a Docker image which is mounted to certain folders in my computer that contain meshes. 
+
+This section will cover the following aspects of setting up and running icepack for the first time:
+* Intro to Docker and containerization [#](#docker-)
+* The Dockerfile [#](#dockerfile)
+* Building an icepack Docker image [#](#docker-image)
+* Starting up a container off of your Docker image via a shell script [#](#starting-shell-script)
 
 ---
 
+### Docker 🐳 
+
+Docker is a containerization software. Containerization is the concept of sending out software packages with all of the files, code, and libraries it needs to run straight out of the box on any operating system. Below, I will be talking about Docker images and containers. A docker image is a read-only template that tells the daemon how to create containers with all of the dependencies needed to run things installed. The container is a running instance of the image. You can have multiple containers running off of a single image, but the containers do not talk to each other or the files in the host machine. 
+
+
   <details open>  
-    <summary> <b>Dockerfile</b> </summary>
+    <summary> <b>Dockerfile</b> </summary> <a name="dockerfile"></a>
     The Dockerfile is the cornerstone of the docker process. It tells the Docker daemon (the daemon manages everything behind the scenes) which components to include in your image build. 
  
   ```
@@ -119,10 +131,10 @@ ENTRYPOINT ["/usr/local/bin/entry.sh"]
 
 </details> <!--- End of Dockerfile section --->
 
----
+
 
   <details open>
-    <summary> <b>Building a Docker image</b> </summary>
+    <summary> <b>Building a Docker image</b> </summary> <a name="docker-image"></a>
 Create a file named Dockerfile in your machine and paste the above text into it. Then in terminal, navigate to the folder that contains Dockerfile and run:
     
 ```
@@ -151,23 +163,28 @@ I stumbled across [this website](https://dockerbuild.com/courses/) while trying 
 > [!NOTE]
 > <a name="tahoe"><b>[1]</b></a>: For some reason upgrading to Tahoe breaks a lot of things about Docker (I wish I had stuck with Sequoia). In particular, Tahoe breaks websocket connections with Docker, which is the open line of communication between your Docker container and the Jupyter Notebook. I don't know what changed, but I started getting stuck in websocket_timeout loops when trying to do anything on my notebooks. Thankfully, there was a simple fix: go to Docker Desktop, open settings and look for `General>Choose Virtual Machine Manager (VMM)` and make sure the toggle for Use Rosetta is OFF. 
 
-  ## Starting Shell Script
+
+---
+
+  ### Starting Shell Script
   I use a shell script to open the docker image and immediately start the jupyter notebook. This allows me to run a simple command rather than having to remember the exact flags and mounts I need within the container. This script is based off of my workflow and file organization, so you'll need to modify the mounts to your liking. I've included a detailed description of what everything does below. 
 
   
   Create a file <name of script>.sh. Paste the code block below into the sh file. Open the terminal and run `sh <name of script>.sh`. 
   ```
-  #!/bin/bash
+#!/bin/bash
 set -e
 
-IMAGE_NAME="<image name>:<tag>" # Change this to your project name (must be lowercase)
+IMAGE_NAME="icepack:jupyter-lab" # Change this to your project name (must be lowercase)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VIR_ENV_DIR="/home/firedrake"
+PORT="$(docker inspect $IMAGE_NAME | jq -r '.[].Config.Env[]|select(match("^PORT"))|.[index("=")+1:]')"
 
 mkdir -p "$SCRIPT_DIR/notebooks"
 mkdir -p "$SCRIPT_DIR/notebooks/data"
 mkdir -p "$SCRIPT_DIR/notebooks/meshes"
+mkdir -p "$SCRIPT_DIR/notebooks/checkpoints"
 mkdir -p "$SCRIPT_DIR/src"
 
 MOUNTS=(
@@ -175,22 +192,52 @@ MOUNTS=(
     -v "$SCRIPT_DIR/notebooks:$VIR_ENV_DIR/icepack/notebooks"
     -v "$SCRIPT_DIR/notebooks/data:$VIR_ENV_DIR/icepack/notebooks/data"
     -v "$SCRIPT_DIR/notebooks/meshes:$VIR_ENV_DIR/icepack/notebooks/meshes"
+    -v "$SCRIPT_DIR/notebooks/checkpoints:$VIR_ENV_DIR/icepack/notebooks/checkpoints"
     -v "$SCRIPT_DIR/src:$VIR_ENV_DIR/icepack/src"
 )
 
 docker run --rm -it \
     --platform linux/amd64 \
     "${MOUNTS[@]}" \
-    -p 8887:8887 \
+    -p "$PORT:$PORT" \
     "$IMAGE_NAME"
 ```
-### Breaking down the components of the shell script:
+#### Breaking down the components of the shell script:
 `set -e` stops the execution of a script if any command in the script has an error and returns the exit code of the command within the script that failed
 
 `IMAGE_NAME`, `SCRIPT_DIR`, and `VIR_ENV_DIR` are variables used by the script. 
 
 > [!TIP]
 > At least on Mac, you can't open the Jupyter notebooks in browser unless you have the `-p` or `--publish` flag in your docker run command. The above script publishes the docker container to port 8887, which is the same port exposed in the Dockerfile
+
+---
+
+### Accessing icepack in the Docker container
+When you've entered the Docker container of your icepack image, if you've set it up following the docker file above, it should output a whole bunch of lines of code from [Server App]. Among these lines there should be a link starting with `http://127.0.0.1:8888/?token=`. Copy and paste that link into any browser, and it should pull up a Jupyter Lab instance that shows you the contents of the notebooks folder. 
+
+#### Troubleshooting the Jupyter connection
+If you hit a "webpage not found" page when entering in the link, there's some kind of issue with your container's websocket connection to Jupyter. The most common cause of this that I've run into is mismatched ports across my various files and links. This is the primary reason I've set up my Dockerfile and start.sh script the way I have, so I keep the ports consistent across all commands.
+
+##### What are ports?
+Think of the IP/Port system like an apartment building. The I.P. address is the street address of the building. Each apartment inside is a separate application. In order for the outside world to communicate with the apartment, they need to send mail to the specific apartment number. Ports are the I.P. equivalent of apartment numbers. 
+The link above contains several elements:
+* `127.0.0.1` is called the loopback I.P. address and is how your computer refers to itself.
+  * `127.0.0.1` is the same as localhost, but copying the localhost link spit out by the [Server App] doesn't work for opening Jupyter. No clue why unfortunately. Hopefully I'll come back and update this when I figure that one out
+* `:8888` is the TCP Port that your computer is listening for Jupyter information on. TCP ports are application-specific channels used to convey information between your computer and the app so that wires don't get crossed in transmitting information. Both the host system (your machine) and the container have their own set of ports that need to be explicitly told to listen to each other. 
+  * You can use any number between 1024 and 65535 as a port, but computery people have decided they like the 8000 ports best for applications for some reason? So that's why I'm using ports between 8000 and 9000 for my icepack instance.
+  * You can technically use any number between 0 and 1023, but theses are the Well-Known Ports and used for Very Important Things across every computer, so using ports in this range will likely break things. A
+ 
+##### Why are ports?
+TCP Ports allow a single IP address to run multiple instances of the same application without the instances interfering with each other. A Socket is the combination of the IP address and Port. 
+
+##### Where are ports?
+We've used some type of PORT command in three different places between the Dockerfile and the start.sh script. Given that we've used the same value for all of them, this gets very confusing very quickly. 
+
+
+If your browser is not showing a Jupyter instance when you put the link in, there's some kind of interruption of the port. Both the host and the container have ports, which we defined above in our Dockerfile and start.sh script. In my build case, I have both the host and the container listen in on the same port for simplicity. The Jupyter server is sending information to the container port via the port we specified in the command `jupyter lab --ip 0.0.0.0 --no-browser --port 8870`. In the `docker run` command located within the start.sh script, we included the flag `-p "$PORT:$PORT"`. This is formatted as `<HOST_PORT>:<CONTAINER_PORT>` and tells the Docker daemon to make our computer listen on HOST_PORT for information coming from CONTAINER_PORT.  
+
+## How2Icepack for non-computery people
+Now that we have the icepack container up and running, we can 
 
   ## Vocaublary
   *args - non-keyworded arguments (Requires correct order of arguments passed to a function)\
