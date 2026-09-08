@@ -51,7 +51,7 @@ class DamageTransportAL(TransportEquation):
 
         # Increase/decrease damage depending on stress and strain rates
         ε_1 = eigenvalues(ε)[0]
-        σ_e = sqrt(inner(M, M) - det(M))
+        σ_e = sqrt(inner(M, M) - det(M)) #yield criterion
 
         ε_h = firedrake.Constant(self.healing_strain_rate)
         σ_d = firedrake.Constant(self.damage_stress)
@@ -62,3 +62,8 @@ class DamageTransportAL(TransportEquation):
         fracture = γ_d * conditional(σ_e - σ_d > 0, ε_1, 0.0) * (1 - D)
 
         return healing + fracture
+
+    def vonMises(self, **kwargs):
+        M = itemgetter("membrane_stress")(**kwargs)
+        σ_e = sqrt(inner(M, M) - det(M))
+        return σ_e 
